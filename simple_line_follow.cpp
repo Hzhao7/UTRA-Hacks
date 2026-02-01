@@ -42,6 +42,14 @@
 #define WHITE_GREEN 18
 #define WHITE_BLUE 16
 
+// Blue (special action): R:76-81  G:48-51  B:27-30
+#define BLUE_RED_MIN 76
+#define BLUE_RED_MAX 81
+#define BLUE_GREEN_MIN 48
+#define BLUE_GREEN_MAX 51
+#define BLUE_BLUE_MIN 27
+#define BLUE_BLUE_MAX 30
+
 // Motor speed (0-255)
 #define BASE_SPEED 100       // Slower base speed for sharp turns
 #define MAX_SPEED 200
@@ -65,6 +73,15 @@ float pdOutput = 0;       // Combined PD output
 
 // Start sequence flag
 bool startSequenceComplete = false;
+
+// Ultrasonic obstacle detection
+#define OBSTACLE_DISTANCE 35      // Distance threshold in cm
+#define OBSTACLE_FORWARD_TIME 2000 // Time to go forward during avoidance (ms)
+int obstacleCount = 0;            // Tracks which obstacle we're on (0 = none yet, 1 = first, 2 = second)
+
+// Blue detection flag
+bool blueHandled = false;         // Tracks if blue sequence has been executed
+#define BACKUP_TIME 400           // Time to go backward (ms)
 
 Servo servoMotor;
 
@@ -106,7 +123,6 @@ void loop() {
   // ===== HARDCODED START SEQUENCE =====
   // Run once at the beginning to pass the sharp 90 degree turns
   if (!startSequenceComplete) {
-    Serial.println("Starting hardcoded sequence...");
     
     // Step 1: Go forward ~25cm
     Serial.println("Forward 25cm");
@@ -118,7 +134,7 @@ void loop() {
     
     // Step 3: Go forward ~25cm
     Serial.println("Forward 25cm");
-    driveForward(BASE_SPEED, 1500);  // Adjust time as needed
+    driveForward(BASE_SPEED, 1600);  // Adjust time as needed
     
     // Step 4: Turn 90 degrees RIGHT
     Serial.println("Turn 90 RIGHT");
@@ -129,8 +145,70 @@ void loop() {
     return;
   }
   
+  // ===== ULTRASONIC OBSTACLE DETECTION =====
+  long distance = getDistance();
+  
+  if (distance > 0 && distance < OBSTACLE_DISTANCE) {
+    // Obstacle detected!
+    stopMotors();
+    obstacleCount++;
+    
+    Serial.print("Obstacle detected at ");
+    Serial.print(distance);
+    Serial.print("cm - Avoidance maneuver #");
+    Serial.println(obstacleCount);
+    
+    if (obstacleCount == 1) {
+      // First obstacle: turn LEFT, go forward, turn LEFT, go forward
+      Serial.println("Avoiding LEFT");
+      turnRight90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+      turnRight90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+    } else {
+      // Second obstacle (and any after): turn RIGHT, go forward, turn RIGHT, go forward
+      Serial.println("Avoiding RIGHT");
+      turnLeft90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+      turnLeft90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+    }
+    
+    Serial.println("Avoidance complete, resuming line follow");
+    delay(100);  // Brief pause before resuming
+    return;  // Skip this loop iteration, resume line following next cycle
+  }
+  
   // ===== PD LINE FOLLOWING =====
   readColorFast();  // Use faster color reading
+  
+  // ===== BLUE DETECTION =====
+  if (isBlueColor() && !blueHandled) {
+    Serial.println("BLUE detected - executing special sequence!");
+    stopMotors();
+    
+    // Step 1: Turn right 90 degrees
+    Serial.println("Turn RIGHT 90");
+    turnRight90();
+    
+    // Step 2: Lower servo to 5 degrees
+    Serial.println("Lowering servo to 5 degrees");
+    servoMotor.write(5);
+    delay(500);  // Wait for servo to move
+    
+    // Step 3: Go back a bit
+    Serial.println("Backing up");
+    driveBackward(BASE_SPEED, BACKUP_TIME);
+    
+    // Step 4: Turn right 90 degrees
+    Serial.println("Turn RIGHT 90");
+    turnRight90();
+    
+    blueHandled = true;  // Mark blue sequence as complete
+    Serial.println("Blue sequence complete, resuming line follow");
+    delay(100);
+    return;
+  }
   
   // Calculate error based on color sensor reading
   // Red line detection - use green channel as it has the biggest difference
@@ -247,6 +325,13 @@ bool isWhite() {
   return (redValue < 50 && greenValue < 50 && blueValue < 50);
 }
 
+bool isBlueColor() {
+  // Check if blue color detected (R:76-81  G:48-51  B:27-30)
+  return (redValue >= BLUE_RED_MIN && redValue <= BLUE_RED_MAX &&
+          greenValue >= BLUE_GREEN_MIN && greenValue <= BLUE_GREEN_MAX &&
+          blueValue >= BLUE_BLUE_MIN && blueValue <= BLUE_BLUE_MAX);
+}
+
 // ===== Motor Control Functions =====
 void moveForward(int speed) {
   // Left motor forward
@@ -310,9 +395,17 @@ void driveForward(int speed, int duration) {
   delay(100);  // Brief pause
 }
 
+// Drive backward for a specified duration (ms)
+void driveBackward(int speed, int duration) {
+  moveBackward(speed);
+  delay(duration);
+  stopMotors();
+  delay(100);  // Brief pause
+}
+
 // Turn 90 degrees LEFT (pivot turn)
 // Adjust TURN_TIME_90 based on your robot - start with 500ms and tune
-#define TURN_TIME_90 700
+#define TURN_TIME_90 650
 #define TURN_SPEED_90 150
 
 void turnLeft90() {
