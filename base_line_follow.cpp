@@ -52,6 +52,15 @@
 #define BLUE_BLUE_MIN 27
 #define BLUE_BLUE_MAX 30
 
+// Green Line: TODO - calibrate these values!
+// Placeholder values - measure your green line
+#define GREEN_RED_MIN 50
+#define GREEN_RED_MAX 70
+#define GREEN_GREEN_MIN 30
+#define GREEN_GREEN_MAX 50
+#define GREEN_BLUE_MIN 40
+#define GREEN_BLUE_MAX 60
+
 // Motor speed (0-255)
 #define BASE_SPEED 100
 #define MAX_SPEED 200
@@ -72,12 +81,34 @@ float lastError = 0;
 float derivative = 0;
 float pdOutput = 0;
 
-// Robot state
-bool stopped = false;
+// Robot state machine
+// STATE_FOLLOW_LINE: Normal line following (black/red/white)
+// STATE_BLUE_DETECTED_1: First blue detected, freeze then 180
+// STATE_FOLLOW_TO_BLACK: Following line until black detected
+// STATE_ROTATE_TO_GREEN: Rotating until green detected
+// STATE_FOLLOW_GREEN: Following green line
+// STATE_BLUE_DETECTED_2: Second blue detected, freeze then 180
+// STATE_RETURN_PATH: Following green then black back
+// STATE_DONE: Finished
+enum RobotState {
+  STATE_FOLLOW_LINE,
+  STATE_BLUE_DETECTED_1,
+  STATE_FOLLOW_TO_BLACK,
+  STATE_ROTATE_TO_GREEN,
+  STATE_FOLLOW_GREEN,
+  STATE_BLUE_DETECTED_2,
+  STATE_RETURN_PATH,
+  STATE_DONE
+};
 
-// Color confirmation counters (require multiple readings to confirm blue)
+RobotState currentState = STATE_FOLLOW_LINE;
+int blueDetectCount = 0;  // Tracks how many times blue has been detected
+
+// Color confirmation counters (require multiple readings to confirm colors)
 #define COLOR_CONFIRM_COUNT 5    // Number of consecutive readings required
 int blueConfirmCount = 0;
+int blackConfirmCount = 0;
+int greenConfirmCount = 0;
 
 Servo servoMotor;
 
@@ -118,109 +149,113 @@ void setup() {
 }
 
 void loop() {
-  // If stopped, stay stopped
-  if (stopped) {
-    stopMotors();
-    delay(100);
-    return;
-  }
-  
   // Read color sensor
   readColorFast();
   
-  // ===== CHECK FOR STOP CONDITIONS (with confirmation) =====
-  // Require multiple consecutive readings to confirm blue
-  // This prevents false positives during black/white transitions
-  
-  if (isBlue()) {
-    blueConfirmCount++;
-    if (blueConfirmCount >= COLOR_CONFIRM_COUNT) {
-      Serial.println("BLUE confirmed - STOPPING!");
+  switch (currentState) {
+    
+    case STATE_FOLLOW_LINE:
+      // Normal line following - check for blue
+      if (isBlue()) {
+        blueConfirmCount++;
+        if (blueConfirmCount >= COLOR_CONFIRM_COUNT) {
+          Serial.println("BLUE detected - freezing for 1 second");
+          stopMotors();
+          delay(1000);  // Freeze for 1 second
+          
+          Serial.println("Turning 180 degrees");
+          turn180();
+          
+          blueConfirmCount = 0;
+          blueDetectCount++;
+          currentState = STATE_FOLLOW_TO_BLACK;
+          Serial.println("Now following line until BLACK detected");
+          return;
+        }
+      } else {
+        blueConfirmCount = 0;
+      }
+      
+      // Do line following
+      doLineFollowing();
+      break;
+      
+    case STATE_FOLLOW_TO_BLACK:
+      // Follow line until we detect black
+      if (isBlack()) {
+        blackConfirmCount++;
+        if (blackConfirmCount >= COLOR_CONFIRM_COUNT) {
+          Serial.println("BLACK detected - stopping and rotating to find GREEN");
+          stopMotors();
+          delay(200);
+          blackConfirmCount = 0;
+          currentState = STATE_ROTATE_TO_GREEN;
+          return;
+        }
+      } else {
+        blackConfirmCount = 0;
+      }
+      
+      // Continue line following
+      doLineFollowing();
+      break;
+      
+    case STATE_ROTATE_TO_GREEN:
+      // Rotate in place until green is detected
+      rotateSlowRight();  // Slow rotation to find green
+      
+      if (isGreen()) {
+        greenConfirmCount++;
+        if (greenConfirmCount >= COLOR_CONFIRM_COUNT) {
+          Serial.println("GREEN detected - following green line");
+          stopMotors();
+          delay(100);
+          greenConfirmCount = 0;
+          currentState = STATE_FOLLOW_GREEN;
+          return;
+        }
+      } else {
+        greenConfirmCount = 0;
+      }
+      break;
+      
+    case STATE_FOLLOW_GREEN:
+      // Follow green line until blue detected
+      if (isBlue()) {
+        blueConfirmCount++;
+        if (blueConfirmCount >= COLOR_CONFIRM_COUNT) {
+          Serial.println("BLUE detected again - freezing for 1 second");
+          stopMotors();
+          delay(1000);  // Freeze for 1 second
+          
+          Serial.println("Turning 180 degrees");
+          turn180();
+          
+          blueConfirmCount = 0;
+          blueDetectCount++;
+          currentState = STATE_RETURN_PATH;
+          Serial.println("Returning on green then black path");
+          return;
+        }
+      } else {
+        blueConfirmCount = 0;
+      }
+      
+      // Follow green line (use green channel for error)
+      doLineFollowingGreen();
+      break;
+      
+    case STATE_RETURN_PATH:
+      // Follow green path back, then black path
+      // Just do general line following - will follow whatever line it's on
+      doLineFollowing();
+      break;
+      
+    case STATE_DONE:
       stopMotors();
-      stopped = true;
-      
-      // ===== UNCOMMENT BELOW FOR HARDCODED TURN SEQUENCE =====
-      // // Step 1: Set servo to 5 degrees initially
-      // Serial.println("Setting servo to 5 degrees");
-      // servoMotor.write(5);
-      // delay(300);  // Wait for servo to move
-      // 
-      // // Step 2: Turn 90 degrees to the right
-      // Serial.println("Turning RIGHT 90 degrees");
-      // turnRight90();
-      // 
-      // // Step 3: Set servo to 11 degrees after turn
-      // Serial.println("Setting servo to 11 degrees");
-      // servoMotor.write(11);
-      // delay(300);  // Wait for servo to move
-      // 
-      // Serial.println("Blue sequence complete");
-      // ===== END HARDCODED TURN SEQUENCE =====
-      
-      return;
-    }
-  } else {
-    // Not blue - reset counter
-    blueConfirmCount = 0;
+      delay(100);
+      break;
   }
-  
-  // ===== DETERMINE LINE TYPE AND CALCULATE ERROR =====
-  // Check if we're on a black line or red line
-  
-  if (isBlack()) {
-    // Black line detected - we're on the line
-    // Black has high values (~150), white has low values (~17)
-    // Use green channel for consistency
-    // Black (~150) = on line = negative error
-    // White (~18) = off line = positive error
-    error = map(greenValue, WHITE_GREEN, 150, 100, -100);
-  } 
-  else if (isRed()) {
-    // Red line detected - we're on the line
-    // Red line has green ~102, white has green ~18
-    error = map(greenValue, WHITE_GREEN, 102, 100, -100);
-  }
-  else {
-    // Likely on white or transitioning - use general mapping
-    // Higher green = more likely on line
-    error = map(greenValue, WHITE_GREEN, 150, 100, -100);
-  }
-  
-  error = constrain(error, -100, 100);
-  
-  // Calculate derivative (rate of change)
-  derivative = error - lastError;
-  
-  // Calculate PD output
-  pdOutput = (KP * error) + (KD * derivative);
-  
-  // Apply PD output to motor speeds
-  int leftSpeed = BASE_SPEED - pdOutput;
-  int rightSpeed = BASE_SPEED + pdOutput;
-  
-  // Constrain speeds to valid range
-  leftSpeed = constrain(leftSpeed, MIN_SPEED, MAX_SPEED);
-  rightSpeed = constrain(rightSpeed, MIN_SPEED, MAX_SPEED);
-  
-  // Apply motor speeds
-  setMotorSpeeds(leftSpeed, rightSpeed);
-  
-  // Debug output
-  Serial.print("R:");
-  Serial.print(redValue);
-  Serial.print(" G:");
-  Serial.print(greenValue);
-  Serial.print(" B:");
-  Serial.print(blueValue);
-  Serial.print(" | Err:");
-  Serial.print(error);
-  Serial.print(" L:");
-  Serial.print(leftSpeed);
-  Serial.print(" R:");
-  Serial.println(rightSpeed);
-  
-  // Store error for next iteration
-  lastError = error;
   
   delay(20);
 }
@@ -242,6 +277,12 @@ bool isBlue() {
   return (redValue >= BLUE_RED_MIN && redValue <= BLUE_RED_MAX &&
           greenValue >= BLUE_GREEN_MIN && greenValue <= BLUE_GREEN_MAX &&
           blueValue >= BLUE_BLUE_MIN && blueValue <= BLUE_BLUE_MAX);
+}
+
+bool isGreen() {
+  return (redValue >= GREEN_RED_MIN && redValue <= GREEN_RED_MAX &&
+          greenValue >= GREEN_GREEN_MIN && greenValue <= GREEN_GREEN_MAX &&
+          blueValue >= GREEN_BLUE_MIN && blueValue <= GREEN_BLUE_MAX);
 }
 
 bool isWhite() {
@@ -301,6 +342,80 @@ void turnRight90() {
   delay(TURN_TIME_90);
   stopMotors();
   delay(100);  // Brief pause
+}
+
+// Turn 180 degrees (two 90 degree turns)
+void turn180() {
+  // Left motor forward, right motor backward
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, TURN_SPEED_90);
+  
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENB, TURN_SPEED_90);
+  
+  delay(TURN_TIME_90 * 2);  // Double the time for 180
+  stopMotors();
+  delay(100);
+}
+
+// Slow rotation to the right for finding colors
+#define ROTATE_SPEED 80
+void rotateSlowRight() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  analogWrite(ENA, ROTATE_SPEED);
+  
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENB, ROTATE_SPEED);
+}
+
+// Standard line following logic
+void doLineFollowing() {
+  // Determine error based on line type
+  if (isBlack()) {
+    error = map(greenValue, WHITE_GREEN, 150, 100, -100);
+  } 
+  else if (isRed()) {
+    error = map(greenValue, WHITE_GREEN, 102, 100, -100);
+  }
+  else {
+    error = map(greenValue, WHITE_GREEN, 150, 100, -100);
+  }
+  
+  error = constrain(error, -100, 100);
+  derivative = error - lastError;
+  pdOutput = (KP * error) + (KD * derivative);
+  
+  int leftSpeed = BASE_SPEED - pdOutput;
+  int rightSpeed = BASE_SPEED + pdOutput;
+  
+  leftSpeed = constrain(leftSpeed, MIN_SPEED, MAX_SPEED);
+  rightSpeed = constrain(rightSpeed, MIN_SPEED, MAX_SPEED);
+  
+  setMotorSpeeds(leftSpeed, rightSpeed);
+  lastError = error;
+}
+
+// Line following for green line
+void doLineFollowingGreen() {
+  // Green line - use green channel midpoint (~40)
+  error = map(greenValue, WHITE_GREEN, 40, 100, -100);
+  error = constrain(error, -100, 100);
+  
+  derivative = error - lastError;
+  pdOutput = (KP * error) + (KD * derivative);
+  
+  int leftSpeed = BASE_SPEED - pdOutput;
+  int rightSpeed = BASE_SPEED + pdOutput;
+  
+  leftSpeed = constrain(leftSpeed, MIN_SPEED, MAX_SPEED);
+  rightSpeed = constrain(rightSpeed, MIN_SPEED, MAX_SPEED);
+  
+  setMotorSpeeds(leftSpeed, rightSpeed);
+  lastError = error;
 }
 
 void setMotorSpeeds(int leftSpeed, int rightSpeed) {
