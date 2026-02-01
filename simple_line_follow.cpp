@@ -66,6 +66,11 @@ float pdOutput = 0;       // Combined PD output
 // Start sequence flag
 bool startSequenceComplete = false;
 
+// Ultrasonic obstacle detection
+#define OBSTACLE_DISTANCE 35      // Distance threshold in cm
+#define OBSTACLE_FORWARD_TIME 2000 // Time to go forward during avoidance (ms)
+int obstacleCount = 0;            // Tracks which obstacle we're on (0 = none yet, 1 = first, 2 = second)
+
 Servo servoMotor;
 
 void setup() {
@@ -106,7 +111,6 @@ void loop() {
   // ===== HARDCODED START SEQUENCE =====
   // Run once at the beginning to pass the sharp 90 degree turns
   if (!startSequenceComplete) {
-    Serial.println("Starting hardcoded sequence...");
     
     // Step 1: Go forward ~25cm
     Serial.println("Forward 25cm");
@@ -118,7 +122,7 @@ void loop() {
     
     // Step 3: Go forward ~25cm
     Serial.println("Forward 25cm");
-    driveForward(BASE_SPEED, 1500);  // Adjust time as needed
+    driveForward(BASE_SPEED, 1600);  // Adjust time as needed
     
     // Step 4: Turn 90 degrees RIGHT
     Serial.println("Turn 90 RIGHT");
@@ -127,6 +131,40 @@ void loop() {
     Serial.println("Start sequence complete, switching to line follow");
     startSequenceComplete = true;
     return;
+  }
+  
+  // ===== ULTRASONIC OBSTACLE DETECTION =====
+  long distance = getDistance();
+  
+  if (distance > 0 && distance < OBSTACLE_DISTANCE) {
+    // Obstacle detected!
+    stopMotors();
+    obstacleCount++;
+    
+    Serial.print("Obstacle detected at ");
+    Serial.print(distance);
+    Serial.print("cm - Avoidance maneuver #");
+    Serial.println(obstacleCount);
+    
+    if (obstacleCount == 1) {
+      // First obstacle: turn LEFT, go forward, turn LEFT, go forward
+      Serial.println("Avoiding LEFT");
+      turnRight90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+      turnRight90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+    } else {
+      // Second obstacle (and any after): turn RIGHT, go forward, turn RIGHT, go forward
+      Serial.println("Avoiding RIGHT");
+      turnLeft90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+      turnLeft90();
+      driveForward(BASE_SPEED, OBSTACLE_FORWARD_TIME);
+    }
+    
+    Serial.println("Avoidance complete, resuming line follow");
+    delay(100);  // Brief pause before resuming
+    return;  // Skip this loop iteration, resume line following next cycle
   }
   
   // ===== PD LINE FOLLOWING =====
@@ -312,7 +350,7 @@ void driveForward(int speed, int duration) {
 
 // Turn 90 degrees LEFT (pivot turn)
 // Adjust TURN_TIME_90 based on your robot - start with 500ms and tune
-#define TURN_TIME_90 700
+#define TURN_TIME_90 650
 #define TURN_SPEED_90 150
 
 void turnLeft90() {
