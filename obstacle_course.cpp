@@ -51,14 +51,14 @@
 #define BLUE_BLUE_MAX 30
 
 // Motor speed (0-255)
-#define BASE_SPEED 100       // Slower base speed for sharp turns
-#define MAX_SPEED 200
+#define BASE_SPEED 70       // Slower base speed for sharp turns
+#define MAX_SPEED 125
 #define MIN_SPEED 0
 
 // ===== PD Control Parameters =====
 // Tune these values based on your robot's behavior
-#define KP 3.5      // Proportional gain - increased for sharp 90 degree turns
-#define KD 2.0      // Derivative gain - helps anticipate and smooth sharp turns
+#define KP 7.5      // Proportional gain - increased for sharp 90 degree turns
+#define KD 5.0      // Derivative gain - helps anticipate and smooth sharp turns
 
 // ===== Global Variables =====
 int redValue = 0;
