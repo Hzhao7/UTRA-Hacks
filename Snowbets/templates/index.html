@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snowbets - Robot Betting Platform</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">*</span>
+                <h1>Snowbets</h1>
+            </div>
+            <div class="user-info" id="userInfo">
+                <div class="balance" id="balance">
+                    <span class="snow-icon">S</span>
+                    <span id="balanceAmount">0</span>
+                </div>
+                <span class="username" id="username">Guest</span>
+                <button class="btn btn-logout" id="logoutBtn" style="display:none;">Logout</button>
+            </div>
+        </header>
+
+        <!-- Login/Register Modal -->
+        <div class="modal" id="authModal">
+            <div class="modal-content">
+                <h2>Welcome to Snowbets</h2>
+                <p>Enter your username to start betting on robot performance!</p>
+                <input type="text" id="usernameInput" placeholder="Username (3+ characters)" maxlength="20">
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" id="loginBtn">Login</button>
+                    <button class="btn btn-secondary" id="registerBtn">Register</button>
+                </div>
+                <p class="modal-note">New users receive 1,000 Snow airdrop!</p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Robot Status Panel -->
+            <section class="robot-panel">
+                <h2>Live Robot Data</h2>
+                <div class="robot-stats">
+                    <div class="stat-card">
+                        <div class="stat-label">Color Detected</div>
+                        <div class="stat-value" id="detectedColor">--</div>
+                        <div class="color-preview" id="colorPreview"></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">RGB Values</div>
+                        <div class="stat-value rgb-values">
+                            <span id="redValue">R: --</span>
+                            <span id="greenValue">G: --</span>
+                            <span id="blueValue">B: --</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Speed</div>
+                        <div class="stat-value" id="speedCategory">--</div>
+                        <div class="speed-bar">
+                            <div class="speed-fill" id="speedFill"></div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">PID Error</div>
+                        <div class="stat-value" id="pidError">--</div>
+                        <div class="error-indicator" id="errorIndicator"></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">On Line</div>
+                        <div class="stat-value status-indicator" id="onLine">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Motor Speeds</div>
+                        <div class="stat-value motor-speeds">
+                            <span id="leftSpeed">L: --</span>
+                            <span id="rightSpeed">R: --</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Betting Markets -->
+            <section class="markets-panel">
+                <h2>Active Markets</h2>
+                <div class="markets-grid" id="marketsGrid">
+                    <!-- Markets loaded dynamically -->
+                </div>
+            </section>
+
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- My Bets -->
+                <div class="sidebar-section">
+                    <h3>My Bets</h3>
+                    <div class="bets-list" id="myBets">
+                        <p class="empty-state">No active bets</p>
+                    </div>
+                </div>
+
+                <!-- Leaderboard -->
+                <div class="sidebar-section">
+                    <h3>Leaderboard</h3>
+                    <div class="leaderboard" id="leaderboard">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="sidebar-section">
+                    <h3>Platform Stats</h3>
+                    <div class="stats-mini">
+                        <div class="stat-mini">
+                            <span class="label">Total Wagered</span>
+                            <span class="value" id="totalWagered">0</span>
+                        </div>
+                        <div class="stat-mini">
+                            <span class="label">Active Bets</span>
+                            <span class="value" id="activeBets">0</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </main>
+
+        <!-- Bet Placement Modal -->
+        <div class="modal" id="betModal" style="display:none;">
+            <div class="modal-content bet-modal">
+                <h2 id="betModalTitle">Place Bet</h2>
+                <p id="betModalDescription"></p>
+                
+                <div class="bet-options" id="betOptions">
+                    <!-- Options loaded dynamically -->
+                </div>
+                
+                <div class="bet-amount-section">
+                    <label for="betAmount">Bet Amount (Snow)</label>
+                    <input type="number" id="betAmount" min="1" value="10" step="1">
+                    <div class="quick-amounts">
+                        <button class="quick-btn" data-amount="10">10</button>
+                        <button class="quick-btn" data-amount="50">50</button>
+                        <button class="quick-btn" data-amount="100">100</button>
+                        <button class="quick-btn" data-amount="500">500</button>
+                    </div>
+                </div>
+                
+                <div class="potential-payout">
+                    Potential Payout: <span id="potentialPayout">0</span> Snow
+                </div>
+                
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" id="confirmBetBtn">Place Bet</button>
+                    <button class="btn btn-secondary" id="cancelBetBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

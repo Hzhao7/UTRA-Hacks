@@ -23,15 +23,16 @@
 #define ECHO A2
 
 // ===== Color Thresholds =====
+// Values determined from manually testing the colour sensor over specific parts of the track
 // Red Line: R:23-26  G:95-110  B:75-85
 // Dark Red: R:33-37  G:107-115  B:91-100 (treat as line)
 // White: R:17  G:18  B:16
 #define LINE_RED_MIN 23
-#define LINE_RED_MAX 37      // Extended to include dark red
+#define LINE_RED_MAX 37      // Extended to include dark red duct tape
 #define LINE_GREEN_MIN 95
-#define LINE_GREEN_MAX 115   // Extended to include dark red
+#define LINE_GREEN_MAX 115   // Extended to include dark red duct tape
 #define LINE_BLUE_MIN 75
-#define LINE_BLUE_MAX 100    // Extended to include dark red
+#define LINE_BLUE_MAX 100    // Extended to include dark red duct tape
 
 // Average values for mapping (using midpoint of red + dark red range)
 #define LINE_RED 30
@@ -56,9 +57,10 @@
 #define MIN_SPEED 0
 
 // ===== PD Control Parameters =====
-// Tune these values based on your robot's behavior
-#define KP 7.5      // Proportional gain - increased for sharp 90 degree turns
-#define KD 5.0      // Derivative gain - helps anticipate and smooth sharp turns
+// These values were manually tuned on the practice track
+// Our refrence is in the middle
+#define KP 7.5      // Proportional gain 
+#define KD 5.0      // Derivative gain
 
 // ===== Global Variables =====
 int redValue = 0;
