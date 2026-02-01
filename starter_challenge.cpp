@@ -165,6 +165,8 @@ void loop() {
           
           Serial.println("Fast 180 counterclockwise");
           turn180FastCCW();
+          turn180FastCCW();
+          turn180FastCCW();
           
           blueConfirmCount = 0;
           blueDetectCount++;
@@ -229,6 +231,8 @@ void loop() {
           delay(1000);  // Freeze for 1 second
           
           Serial.println("Slow 180 counterclockwise");
+          turn180SlowCCW();
+          turn180SlowCCW();
           turn180SlowCCW();
           
           blueConfirmCount = 0;
