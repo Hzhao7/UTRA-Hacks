@@ -71,6 +71,10 @@ void setup() {
   Serial.println("'+'/'-'=speed, 'p'/'P'=Kp, 'd'/'D'=Kd");
   
   lastTime = millis();
+
+  // Auto-start so the robot begins following immediately after upload
+  running = true;
+  Serial.println("AUTO-START ENABLED - following line");
 }
 
 void setMotors(int left, int right) {
