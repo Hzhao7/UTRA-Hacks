@@ -96,7 +96,7 @@ void setup() {
   
   // Initialize servo
   servoMotor.attach(SERVO_PIN);
-  servoMotor.write(90); // Center position
+  servoMotor.write(11); // Center position
   
   delay(1000);
   Serial.println("Line Follower Initialized");
@@ -118,7 +118,7 @@ void loop() {
     
     // Step 3: Go forward ~25cm
     Serial.println("Forward 25cm");
-    driveForward(BASE_SPEED, 1000);  // Adjust time as needed
+    driveForward(BASE_SPEED, 1500);  // Adjust time as needed
     
     // Step 4: Turn 90 degrees RIGHT
     Serial.println("Turn 90 RIGHT");
@@ -312,8 +312,8 @@ void driveForward(int speed, int duration) {
 
 // Turn 90 degrees LEFT (pivot turn)
 // Adjust TURN_TIME_90 based on your robot - start with 500ms and tune
-#define TURN_TIME_90 1000
-#define TURN_SPEED_90 200
+#define TURN_TIME_90 700
+#define TURN_SPEED_90 150
 
 void turnLeft90() {
   // Left motor backward, right motor forward
