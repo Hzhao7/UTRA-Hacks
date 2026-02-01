@@ -3,21 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snowbets - Robot Betting Platform</title>
+    <title>Snowbets ❄️ Robot Betting Platform</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
 </head>
 <body>
+    <!-- Snowfall Effect -->
+    <div class="snowfall">
+        <div class="snowflake">❄</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❄</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❄</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❄</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❄</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❄</div>
+        <div class="snowflake">❅</div>
+        <div class="snowflake">❆</div>
+        <div class="snowflake">❄</div>
+        <div class="snowflake">❅</div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <header class="header">
             <div class="logo">
-                <span class="logo-icon">*</span>
+                <span class="logo-icon">❄️</span>
                 <h1>Snowbets</h1>
             </div>
             <div class="user-info" id="userInfo">
                 <div class="balance" id="balance">
-                    <span class="snow-icon">S</span>
+                    <span class="snow-icon">❄️</span>
                     <span id="balanceAmount">0</span>
                 </div>
                 <span class="username" id="username">Guest</span>
@@ -28,14 +52,14 @@
         <!-- Login/Register Modal -->
         <div class="modal" id="authModal">
             <div class="modal-content">
-                <h2>Welcome to Snowbets</h2>
+                <h2>❄️ Welcome to Snowbets</h2>
                 <p>Enter your username to start betting on robot performance!</p>
                 <input type="text" id="usernameInput" placeholder="Username (3+ characters)" maxlength="20">
                 <div class="modal-buttons">
                     <button class="btn btn-primary" id="loginBtn">Login</button>
                     <button class="btn btn-secondary" id="registerBtn">Register</button>
                 </div>
-                <p class="modal-note">New users receive 1,000 Snow airdrop!</p>
+                <p class="modal-note">🎁 New users receive 1,000 Snow airdrop!</p>
             </div>
         </div>
 

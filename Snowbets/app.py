@@ -100,6 +100,22 @@ def get_me():
     })
 
 
+@app.route('/api/robot')
+def get_robot_data():
+    """Get current robot data (for polling fallback)"""
+    if SIMULATION_MODE:
+        robot.simulate_data()
+    
+    data = robot.get_current_data()
+    return jsonify({
+        'robot': data.to_dict(),
+        'speed_category': robot.get_speed_category(),
+        'on_line': robot.is_on_line(),
+        'avg_error': robot.get_average_error(5.0),
+        'timestamp': time.time()
+    })
+
+
 @app.route('/api/balance')
 def get_balance():
     """Get current user's Snow balance"""
@@ -210,18 +226,6 @@ def get_transactions():
     })
 
 
-@app.route('/api/robot')
-def get_robot_data():
-    """Get current robot sensor data"""
-    data = robot.get_current_data()
-    return jsonify({
-        'robot': data.to_dict(),
-        'speed_category': robot.get_speed_category(),
-        'on_line': robot.is_on_line(),
-        'avg_error': robot.get_average_error(5.0)
-    })
-
-
 @app.route('/api/stats')
 def get_stats():
     """Get platform statistics"""
@@ -279,9 +283,9 @@ def robot_data_broadcast():
             'on_line': robot.is_on_line(),
             'avg_error': robot.get_average_error(5.0),
             'timestamp': time.time()
-        }, room='robot_data')
+        })  # Broadcast to all connected clients
         
-        time.sleep(1.0)  # Update every 1 second
+        socketio.sleep(1.0)  # Use socketio.sleep for proper async
 
 
 def market_settlement_loop():
@@ -321,9 +325,9 @@ def market_settlement_loop():
         # Broadcast market list update
         socketio.emit('markets_update', {
             'markets': [m.to_dict() for m in betting_engine.get_open_markets()]
-        }, room='markets')
+        })
         
-        time.sleep(5)  # Check every 5 seconds
+        socketio.sleep(5)  # Check every 5 seconds
 
 
 def determine_winner(market) -> str:
@@ -370,12 +374,9 @@ if __name__ == '__main__':
     print("  Starting server on http://localhost:5000")
     print("=" * 50)
     
-    # Start background threads
-    robot_thread = threading.Thread(target=robot_data_broadcast, daemon=True)
-    robot_thread.start()
-    
-    settlement_thread = threading.Thread(target=market_settlement_loop, daemon=True)
-    settlement_thread.start()
+    # Start background tasks using socketio for proper eventlet compatibility
+    socketio.start_background_task(robot_data_broadcast)
+    socketio.start_background_task(market_settlement_loop)
     
     # Run Flask app
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, use_reloader=False)

@@ -55,8 +55,20 @@ function initSocket() {
     });
     
     socket.on('robot_update', (data) => {
+        console.log('Robot data received:', data);
         updateRobotDisplay(data);
     });
+    
+    // Fallback: Poll robot data every second if websocket isn't working
+    setInterval(async () => {
+        try {
+            const response = await fetch('/api/robot');
+            const data = await response.json();
+            updateRobotDisplay(data);
+        } catch (e) {
+            console.error('Failed to poll robot data', e);
+        }
+    }, 1000);
     
     socket.on('markets_update', (data) => {
         markets = data.markets;
