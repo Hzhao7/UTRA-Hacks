@@ -163,8 +163,8 @@ void loop() {
           stopMotors();
           delay(1000);  // Freeze for 1 second
           
-          Serial.println("Turning 180 degrees");
-          turn180();
+          Serial.println("Fast 180 counterclockwise");
+          turn180FastCCW();
           
           blueConfirmCount = 0;
           blueDetectCount++;
@@ -228,8 +228,8 @@ void loop() {
           stopMotors();
           delay(1000);  // Freeze for 1 second
           
-          Serial.println("Turning 180 degrees");
-          turn180();
+          Serial.println("Slow 180 counterclockwise");
+          turn180SlowCCW();
           
           blueConfirmCount = 0;
           blueDetectCount++;
@@ -344,18 +344,36 @@ void turnRight90() {
   delay(100);  // Brief pause
 }
 
-// Turn 180 degrees (two 90 degree turns)
-void turn180() {
-  // Left motor forward, right motor backward
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  analogWrite(ENA, TURN_SPEED_90);
+// Turn 180 degrees FAST counterclockwise (left)
+#define TURN_SPEED_FAST 200
+void turn180FastCCW() {
+  // Left motor backward, right motor forward (counterclockwise)
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  analogWrite(ENA, TURN_SPEED_FAST);
   
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
-  analogWrite(ENB, TURN_SPEED_90);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, TURN_SPEED_FAST);
   
   delay(TURN_TIME_90 * 2);  // Double the time for 180
+  stopMotors();
+  delay(100);
+}
+
+// Turn 180 degrees SLOW counterclockwise (left)
+#define TURN_SPEED_SLOW 100
+void turn180SlowCCW() {
+  // Left motor backward, right motor forward (counterclockwise)
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  analogWrite(ENA, TURN_SPEED_SLOW);
+  
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENB, TURN_SPEED_SLOW);
+  
+  delay(TURN_TIME_90 * 3);  // Slower speed needs more time
   stopMotors();
   delay(100);
 }
