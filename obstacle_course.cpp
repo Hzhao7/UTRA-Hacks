@@ -24,20 +24,19 @@
 
 // ===== Color Thresholds =====
 // Values determined from manually testing the colour sensor over specific parts of the track
-// Red Line: R:23-26  G:95-110  B:75-85
-// Dark Red: R:33-37  G:107-115  B:91-100 (treat as line)
-// White: R:17  G:18  B:16
-#define LINE_RED_MIN 23
-#define LINE_RED_MAX 37      // Extended to include dark red duct tape
-#define LINE_GREEN_MIN 95
-#define LINE_GREEN_MAX 115   // Extended to include dark red duct tape
-#define LINE_BLUE_MIN 75
-#define LINE_BLUE_MAX 100    // Extended to include dark red duct tape
+// Black Line: R:80-120  G:80-120  B:80-120 (black absorbs light, high frequency = less reflected)
+// White: R:17  G:18  B:16 (white reflects light, low frequency = more reflected)
+#define LINE_RED_MIN 80
+#define LINE_RED_MAX 120     // Black has higher red frequency (less red reflected)
+#define LINE_GREEN_MIN 80
+#define LINE_GREEN_MAX 120   // Black has higher green frequency (less green reflected)
+#define LINE_BLUE_MIN 80
+#define LINE_BLUE_MAX 120
 
-// Average values for mapping (using midpoint of red + dark red range)
-#define LINE_RED 30
-#define LINE_GREEN 105
-#define LINE_BLUE 88
+// Average values for mapping
+#define LINE_RED 100
+#define LINE_GREEN 100
+#define LINE_BLUE 100
 
 #define WHITE_RED 17
 #define WHITE_GREEN 18
@@ -213,15 +212,15 @@ void loop() {
   }
   
   // Calculate error based on color sensor reading
-  // Red line detection - use green channel as it has the biggest difference
-  // Red line has high green (~102), white has low green (~14)
-  // Red line = negative error = turn LEFT
+  // Black line detection - use red channel (all channels work similarly for black)
+  // Black line has high red (~100), white has low red (~17)
+  // Black line = negative error = turn LEFT
   // White = positive error = turn RIGHT
   
-  // Map green frequency to error value
-  // Red line (~102) maps to -100 (turn left)
-  // White (~14) maps to +100 (turn right)
-  error = map(greenValue, WHITE_GREEN, LINE_GREEN, 100, -100);
+  // Map red frequency to error value
+  // Black line (~100) maps to -100 (turn left)
+  // White (~17) maps to +100 (turn right)
+  error = map(redValue, WHITE_RED, LINE_RED, 100, -100);
   error = constrain(error, -100, 100);
   
   // Calculate derivative (rate of change)
@@ -244,8 +243,8 @@ void loop() {
   setMotorSpeeds(leftSpeed, rightSpeed);
   
   // Debug output
-  Serial.print("G: ");
-  Serial.print(greenValue);
+  Serial.print("R: ");
+  Serial.print(redValue);
   Serial.print(" Err: ");
   Serial.print(error);
   Serial.print(" D: ");
